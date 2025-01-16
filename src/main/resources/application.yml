@@ -12,3 +12,8 @@ spring:
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
       mode: never # always, never, embedded(default) 최초 초기화 이후 -> never
+  jpa:
+    show-sql: true
+    hibernate:
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl

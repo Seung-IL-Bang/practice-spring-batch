@@ -7,3 +7,8 @@ spring:
   batch:
     jdbc:
       initialize-schema: always
+  sql:
+    init:
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+      mode: never # always, never, embedded(default) 최초 초기화 이후 -> never

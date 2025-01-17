@@ -9,11 +9,16 @@ spring:
       initialize-schema: always
   sql:
     init:
-      schema-locations: classpath:schema.sql
+#      schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
       mode: never # always, never, embedded(default) 최초 초기화 이후 -> never
   jpa:
     show-sql: true
     hibernate:
-      naming:
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+#      naming:
+#        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: true
+    defer-datasource-initialization: true

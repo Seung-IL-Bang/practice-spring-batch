@@ -57,7 +57,7 @@ public class JdbcCursorConfiguration {
                         " LIKE ? ORDER BY lastName, firstName")
                 .beanRowMapper(Customer.class) // setter 를 이용한 매핑
                 .queryArguments("A%")
-                .maxItemCount(3)
+                .maxItemCount(100)
                 .currentItemCount(0)
                 .maxRows(100)
                 .build();
@@ -66,6 +66,8 @@ public class JdbcCursorConfiguration {
     @Bean
     public ItemWriter<Customer> customItemWriter() {
         return chunk -> {
+            System.out.println(">> current chunk size: " + chunk.size());
+            Thread.sleep(1000);
             for (Customer customer : chunk.getItems()) {
                 System.out.println(customer);
             }

@@ -8,28 +8,36 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.JdbcPagingItemReader;
+import org.springframework.batch.item.database.Order;
+import org.springframework.batch.item.database.PagingQueryProvider;
 import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder;
+import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
-public class JdbcCursorConfiguration {
+public class JdbcPagingConfiguration {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final DataSource dataSource;
 
-    public JdbcCursorConfiguration(JobRepository jobRepository, PlatformTransactionManager transactionManager, DataSource dataSource) {
+    public JdbcPagingConfiguration(JobRepository jobRepository, PlatformTransactionManager transactionManager, DataSource dataSource) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
         this.dataSource = dataSource;
     }
 
     @Bean
-    public Job job() {
+    public Job job() throws Exception {
         return new JobBuilder("job", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .start(step())
@@ -37,7 +45,7 @@ public class JdbcCursorConfiguration {
     }
 
     @Bean
-    public Step step() {
+    public Step step() throws Exception {
         return new StepBuilder("step", jobRepository)
                 .<Customer, Customer>chunk(10, transactionManager)
                 .reader(customItemReader())
@@ -46,21 +54,34 @@ public class JdbcCursorConfiguration {
     }
 
     @Bean
-    public JdbcCursorItemReader<Customer> customItemReader() {
-        return new JdbcCursorItemReaderBuilder<Customer>()
-                .name("jdbcCursorItemReader")
+    public JdbcPagingItemReader<Customer> customItemReader() throws Exception {
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("firstName", "A%");
+
+        return new JdbcPagingItemReaderBuilder<Customer>()
+                .name("jdbcPagingItemReader")
+                .pageSize(10)
+                .fetchSize(10)
                 .dataSource(dataSource)
-                .fetchSize(10) // chunk size와 동일하게 설정
-                .sql("SELECT id, firstName, lastName, birthdate" +
-                        " FROM customer" +
-                        " WHERE firstName" +
-                        " LIKE ? ORDER BY lastName, firstName")
-                .beanRowMapper(Customer.class) // setter 를 이용한 매핑
-                .queryArguments("A%")
-                .maxItemCount(100)
-                .currentItemCount(0)
-                .maxRows(100)
+                .rowMapper(new BeanPropertyRowMapper<>(Customer.class))
+                .queryProvider(createQueryProvider())
+                .parameterValues(parameters)
                 .build();
+    }
+
+    @Bean
+    public PagingQueryProvider createQueryProvider() throws Exception {
+        SqlPagingQueryProviderFactoryBean queryProvider = new SqlPagingQueryProviderFactoryBean();
+        queryProvider.setDataSource(dataSource);
+        queryProvider.setSelectClause("id,firstName,lastName,birthdate");
+        queryProvider.setFromClause("from customer");
+        queryProvider.setWhereClause("where firstName like :firstName");
+
+        Map<String, Order> sortKeys = new HashMap<>(1);
+        sortKeys.put("id", Order.ASCENDING);
+        queryProvider.setSortKeys(sortKeys);
+        return queryProvider.getObject();
     }
 
     @Bean
